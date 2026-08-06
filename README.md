@@ -79,9 +79,3 @@ The project was verified through:
 - Live endpoint testing
 - Admin URL verification
 
-## Git Repository
-This repository is linked to GitHub and should be committed with a clear final message such as:
-- `Finalize Django login system README and assignment documentation`
-
-## Notes
-This Django application is designed to demonstrate the CRUD lifecycle for user management using Django ORM, templates, and Postman testing.
