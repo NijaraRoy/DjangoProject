@@ -105,28 +105,27 @@ def update_user(request, email):
     if request.method == "GET":
         return render(request, "loginify/update.html")
 
-    if request.method == "PUT":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            user = models.UserDetails.objects.get(email=email)
-            user.username = data.get("username", user.username)
-            user.password = data.get("password", user.password)
-            user.save()
-            return JsonResponse({"message": "User updated successfully"}, status=200)
-        except models.UserDetails.DoesNotExist:
-            return JsonResponse({"error": "User not found"}, status=404)
+    if request.method not in {"PUT", "PATCH"}:
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        user = models.UserDetails.objects.get(email=email)
+        data = json.loads(request.body.decode("utf-8"))
+        user.password = data.get("password", user.password)
+        user.save()
+        return JsonResponse({"message": "User updated successfully"}, status=200)
+    except models.UserDetails.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
 
 
 @csrf_exempt
 def delete_user(request, email):
-    if request.method == "DELETE":
-        try:
-            user = models.UserDetails.objects.get(email=email)
-            user.delete()
-            return JsonResponse({"message": "User deleted successfully"}, status=200)
-        except models.UserDetails.DoesNotExist:
-            return JsonResponse({"error": "User not found"}, status=404)
+    if request.method not in {"GET", "DELETE"}:
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+    try:
+        user = models.UserDetails.objects.get(email=email)
+        user.delete()
+        return JsonResponse({"message": "User deleted successfully"}, status=200)
+    except models.UserDetails.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
