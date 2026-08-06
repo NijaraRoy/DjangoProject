@@ -63,6 +63,8 @@ The following views are implemented:
 
 ## Screenshots
 The following screenshots should be added for submission:
+
+### Path : LoginSystem/Screenshots
 - Signup template screenshot
 - Login template screenshot
 - Success template screenshot
