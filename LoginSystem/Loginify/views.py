@@ -103,20 +103,35 @@ def get_user_by_email(request, email):
 @csrf_exempt
 def update_user(request, email):
     if request.method == "GET":
+        try:
+            models.UserDetails.objects.get(email=email)
+        except models.UserDetails.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
         return render(request, "loginify/update.html")
 
-    if request.method not in {"PUT", "PATCH"}:
+    if request.method not in {"POST", "PUT", "PATCH"}:
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     try:
         user = models.UserDetails.objects.get(email=email)
-        data = json.loads(request.body.decode("utf-8"))
-        user.password = data.get("password", user.password)
-        user.save()
-        return JsonResponse({"message": "User updated successfully"}, status=200)
     except models.UserDetails.DoesNotExist:
         return JsonResponse({"error": "User not found"}, status=404)
 
+    if request.method == "POST":
+        data = _get_request_data(request)
+    else:
+        data = json.loads(request.body.decode("utf-8"))
+
+    new_email = data.get("email")
+    new_password = data.get("password")
+
+    if new_email:
+        user.email = new_email
+    if new_password:
+        user.password = new_password
+    user.save()
+
+    return JsonResponse({"message": "User updated successfully"}, status=200)
 
 @csrf_exempt
 def delete_user(request, email):
