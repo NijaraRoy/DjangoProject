@@ -1,13 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head><title>Update User</title></head>
-<body>
+{% extends "loginify/base.html" %}
+
+{% block title %}Update User | Loginify{% endblock %}
+
+{% block content %}
     <h1>Update User</h1>
     <form method="post">
         {% csrf_token %}
-        <input type="text" name="email" placeholder="New Email"><br>
-        <input type="password" name="password" placeholder="New Password"><br>
-        <button type="submit">Update</button>
+        <div class="field-row">
+            <input type="text" name="email" placeholder="New Email">
+        </div>
+        <div class="field-row">
+            <input type="password" name="password" placeholder="New Password">
+        </div>
+        <button type="submit" class="btn-secondary">Update</button>
     </form>
-</body>
-</html>
+{% endblock %}

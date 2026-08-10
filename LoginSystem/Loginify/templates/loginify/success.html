@@ -1,11 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head><title>Login Success</title></head>
-<body>
+{% extends "loginify/base.html" %}
+
+{% block title %}Success | Loginify{% endblock %}
+
+{% block content %}
     <h1>Success</h1>
     <form method="post">
         {% csrf_token %}
-        <p>Welcome, {{ username }}</p>
+        <p class="welcome-message">Welcome, <strong>{{ username }}</strong></p>
     </form>
-</body>
-</html>
+    <p class="card-footer"><a href="{% url 'login' %}">Back to Login</a></p>
+{% endblock %}
