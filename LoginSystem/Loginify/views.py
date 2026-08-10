@@ -1,146 +1,131 @@
 import json
+from math import e
+import re
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.http import HttpResponse, JsonResponse
 from Loginify import models
+from Loginify.serializers import UserDetailsModelSerializer
+from rest_framework.parsers import JSONParser
+from .forms import LoginForm, SignupForm
+from .models import UserDetails
+from django.contrib.auth.hashers import make_password, check_password
 
 # Create your views here.
 
 def hello_world(request):
     return HttpResponse("Hello, world!")
 
-
-def _get_request_data(request):
-    if request.content_type == "application/json":
-        try:
-            return json.loads(request.body.decode("utf-8"))
-        except json.JSONDecodeError:
-            return {}
-    return request.POST
-
-
-@csrf_exempt
+'''
+Authentication views for user signup and login
+'''
 def signup_view(request):
     if request.method == "GET":
-        return render(request, "loginify/signup.html")
+        return render(request, "loginify/signup.html", {"form": SignupForm()})
 
     if request.method == "POST":
-        data = _get_request_data(request)
-        username = data.get("username")
-        email = data.get("email")
-        password = data.get("password")
+        form = SignupForm(request.POST)
 
-        if not username or not email or not password:
-            if request.content_type == "application/json":
-                return JsonResponse({"error": "username, email, and password are required"}, status=400)
-            return JsonResponse({"error": "username, email, and password are required"}, status=400)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.password = make_password(form.cleaned_data["password"])
+            user.save()
 
-        if models.UserDetails.objects.filter(email=email).exists():
-            if request.content_type == "application/json":
-                return JsonResponse({"error": "email already exists"}, status=400)
-            return JsonResponse({"error": "email already exists"}, status=400)
+            messages.success(request, "Signup successful. Please login now.")
+            return redirect("login")
 
-        models.UserDetails.objects.create(username=username, email=email, password=password)
-
-        if request.content_type == "application/json":
-            return JsonResponse({"message": "Signup successful"}, status=201)
-
-        messages.success(request, "Signup successful. Please login now.")
-        return redirect("login")
+        return render(request, "loginify/signup.html", {"form": form}, status=400)
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def login_view(request):
     if request.method == "GET":
-        return render(request, "loginify/login.html")
+        return render(request, "loginify/login.html", {"form": LoginForm()})
 
     if request.method == "POST":
-        data = _get_request_data(request)
-        email = data.get("email")
-        password = data.get("password")
+        form = LoginForm(request.POST)
 
-        if not email or not password:
-            if request.content_type == "application/json":
-                return JsonResponse({"error": "email and password are required"}, status=400)
-            return JsonResponse({"error": "email and password are required"}, status=400)
+        if form.is_valid():
+            email = form.cleaned_data["email"]
+            password = form.cleaned_data["password"]
 
-        user = models.UserDetails.objects.filter(email=email, password=password).first()
+            user = UserDetails.objects.filter(email=email).first()
 
-        if not user:
-            if request.content_type == "application/json":
-                return JsonResponse({"error": "Invalid email or password"}, status=401)
-            return JsonResponse({"error": "Invalid email or password"}, status=401)
+            if user and check_password(password, user.password):
+                messages.success(request, f"Welcome {user.username}!")
+                return render(request, "loginify/success.html", {"username": user.username})
 
-        if request.content_type == "application/json":
-            return JsonResponse({"message": f"Welcome {user.username}!"}, status=200)
+            form.add_error(None, "Invalid email or password")
+            return render(request, "loginify/login.html", {"form": form}, status=401)
 
-        messages.success(request, f"Welcome {user.username}!")
-        return render(request, "loginify/success.html", {"username": user.username})
+        return render(request, "loginify/login.html", {"form": form}, status=400)
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
+
+'''
+CRUD Operations for UserDetails model
+'''
+
+@csrf_exempt
 def get_all_users(request):
-    if request.method == "GET":
-        users = list(models.UserDetails.objects.values("username", "email"))
-        return JsonResponse({"users": users}, status=200)
-    return JsonResponse({"error": "Method not allowed"}, status=405)
-
-
-def get_user_by_email(request, email):
-    if request.method == "GET":
-        try:
-            user = models.UserDetails.objects.get(email=email)
-            return JsonResponse({"Username": user.username, "Email": user.email}, status=200)
-        except models.UserDetails.DoesNotExist:
-            return JsonResponse({"error": "User not found"}, status=404)
-    return JsonResponse({"error": "Method not allowed"}, status=405)
-
-
-@csrf_exempt
-def update_user(request, email):
-    if request.method == "GET":
-        try:
-            models.UserDetails.objects.get(email=email)
-        except models.UserDetails.DoesNotExist:
-            return JsonResponse({"error": "User not found"}, status=404)
-        return render(request, "loginify/update.html")
-
-    if request.method not in {"POST", "PUT", "PATCH"}:
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
     try:
-        user = models.UserDetails.objects.get(email=email)
-    except models.UserDetails.DoesNotExist:
-        return JsonResponse({"error": "User not found"}, status=404)
+        users_data = models.UserDetails.objects.all()
+    except:
+        data = {
+            "message": "No users found, Sorry!",
+            "status": 404
+        }
+        return JsonResponse(data, status=404)
 
-    if request.method == "POST":
-        data = _get_request_data(request)
-    else:
-        data = json.loads(request.body.decode("utf-8"))
-
-    new_email = data.get("email")
-    new_password = data.get("password")
-
-    if new_email:
-        user.email = new_email
-    if new_password:
-        user.password = new_password
-    user.save()
-
-    return JsonResponse({"message": "User updated successfully"}, status=200)
-
-@csrf_exempt
-def delete_user(request, email):
-    if request.method not in {"GET", "DELETE"}:
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
+    if request.method == "GET":
+        all_users_serialized = UserDetailsModelSerializer(users_data, many=True).data
+        return JsonResponse({"users": all_users_serialized},safe=False, status=200)
+    
+    elif request.method == "POST": #Add a new user
+        input_data = JSONParser().parse(request)
+        user_data_serialized = UserDetailsModelSerializer(data=input_data)
+        
+        if user_data_serialized.is_valid():
+            user_data_serialized.save()
+            return JsonResponse(user_data_serialized.data, status=201)
+        else:
+            return JsonResponse(user_data_serialized.errors, status=400)
+        
+        
+@csrf_exempt    
+def get_user_by_email(request, email):   
+    
     try:
-        user = models.UserDetails.objects.get(email=email)
-        user.delete()
-        return JsonResponse({"message": "User deleted successfully"}, status=200)
-    except models.UserDetails.DoesNotExist:
-        return JsonResponse({"error": "User not found"}, status=404)
+        user_data = models.UserDetails.objects.get(email=email)
+    except:
+        data = {
+            "message": "User not found, Sorry!",
+            "status": 404
+        }
+        return JsonResponse(data, status=404)
+    
+    if request.method == "GET":
+        single_user_serialized = UserDetailsModelSerializer(user_data).data
+        return JsonResponse({"user": single_user_serialized}, safe=False)
+    
+    elif request.method == "PUT":
+        input_data = JSONParser().parse(request)
+        user_data_serialized = UserDetailsModelSerializer(user_data, data=input_data)
+        if user_data_serialized.is_valid():
+            user_data_serialized.save()
+            return JsonResponse(user_data_serialized.data, status=202)
+        else:
+            return JsonResponse(user_data_serialized.errors, status=400)
+        
+    elif request.method == "DELETE":
+        user_data.delete()
+        data = {
+            "message": "User deleted successfully",
+            "status": 204
+        }
+        return JsonResponse(data)
+    
