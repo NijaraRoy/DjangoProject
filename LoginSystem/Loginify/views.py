@@ -8,7 +8,7 @@ from django.http import HttpResponse, JsonResponse
 from Loginify import models
 from Loginify.serializers import UserDetailsModelSerializer
 from rest_framework.parsers import JSONParser
-from .forms import LoginForm, SignupForm
+from .forms import LoginForm, SignupForm, UpdateForm
 from .models import UserDetails
 from django.contrib.auth.hashers import make_password, check_password
 
@@ -54,8 +54,9 @@ def login_view(request):
             user = UserDetails.objects.filter(email=email).first()
 
             if user and check_password(password, user.password):
+                request.session["email"] = user.email
                 messages.success(request, f"Welcome {user.username}!")
-                return render(request, "loginify/success.html", {"username": user.username})
+                return render(request, "loginify/success.html", {"username": user.username, "email": user.email})
 
             form.add_error(None, "Invalid email or password")
             return render(request, "loginify/login.html", {"form": form}, status=401)
@@ -64,6 +65,70 @@ def login_view(request):
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
+
+'''
+Update and delete views for a user, identified by email (matching the CRUD API below).
+The logged-in session email must match the email in the URL, so a user can only
+manage their own account.
+'''
+def update_user_view(request, email):
+    session_email = request.session.get("email")
+    if session_email != email:
+        messages.error(request, "Please login first.")
+        return redirect("login")
+
+    user = UserDetails.objects.filter(email=email).first()
+    if not user:
+        messages.error(request, "User not found.")
+        return redirect("login")
+
+    if request.method == "GET":
+        form = UpdateForm(initial={"email": user.email}, current_email=user.email)
+        return render(request, "loginify/update.html", {"form": form, "email": user.email})
+
+    if request.method == "POST":
+        form = UpdateForm(request.POST, current_email=user.email)
+
+        if form.is_valid():
+            new_email = form.cleaned_data.get("email")
+            new_password = form.cleaned_data.get("password")
+
+            if new_email:
+                user.email = new_email
+            if new_password:
+                user.password = make_password(new_password)
+            user.save()
+
+            del request.session["email"]
+            messages.success(request, "Profile updated successfully. Please login again.")
+            return redirect("login")
+
+        return render(request, "loginify/update.html", {"form": form, "email": email}, status=400)
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+def delete_user_view(request, email):
+    session_email = request.session.get("email")
+    if session_email != email:
+        messages.error(request, "Please login first.")
+        return redirect("login")
+
+    user = UserDetails.objects.filter(email=email).first()
+    if not user:
+        messages.error(request, "User not found.")
+        return redirect("login")
+
+    if request.method == "GET":
+        return render(request, "loginify/delete_confirm.html", {"username": user.username, "email": user.email})
+
+    if request.method == "POST":
+        user.delete()
+        del request.session["email"]
+        messages.success(request, "Account deleted successfully.")
+        return redirect("signup")
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
 '''

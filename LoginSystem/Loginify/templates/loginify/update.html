@@ -6,12 +6,8 @@
     <h1>Update User</h1>
     <form method="post">
         {% csrf_token %}
-        <div class="field-row">
-            <input type="text" name="email" placeholder="New Email">
-        </div>
-        <div class="field-row">
-            <input type="password" name="password" placeholder="New Password">
-        </div>
+        {{ form.as_p }}
         <button type="submit" class="btn-secondary">Update</button>
     </form>
+    <p class="card-footer"><a href="{% url 'delete_user' email=email %}" class="link-danger">Delete Account</a></p>
 {% endblock %}

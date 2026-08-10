@@ -10,6 +10,13 @@
 <body>
     <div class="page">
         <div class="brand">Loginify</div>
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li class="message {{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
         <div class="card">
             {% block content %}{% endblock %}
         </div>
