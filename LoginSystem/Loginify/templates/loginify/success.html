@@ -8,5 +8,9 @@
         {% csrf_token %}
         <p class="welcome-message">Welcome, <strong>{{ username }}</strong></p>
     </form>
+    <p class="card-footer">
+        <a href="{% url 'update_user' email=email %}">Update Profile</a> ·
+        <a href="{% url 'delete_user' email=email %}" class="link-danger">Delete Account</a>
+    </p>
     <p class="card-footer"><a href="{% url 'login' %}">Back to Login</a></p>
 {% endblock %}
