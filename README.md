@@ -113,6 +113,7 @@ protection instead.
 
 ```bash
 cd LoginSystem
+DjangoAssignment\Scripts\python.exe manage.py makemigrations
 DjangoAssignment\Scripts\python.exe manage.py migrate
 DjangoAssignment\Scripts\python.exe manage.py createsuperuser
 DjangoAssignment\Scripts\python.exe manage.py runserver
